@@ -91,7 +91,7 @@ class IssueExtractor
       comments = issue.css("comments")
       watches = issue.css("watches").text
 
-      # uniquie comment authors per issue
+      # unique comment authors per issue
       comment_authors = comments.css("comment").map { |t| t.attribute("author").value }
       comment_author_count = comment_authors.uniq.count
 
@@ -119,9 +119,8 @@ class IssueExtractor
   end
 end
 
+puts "Processinging data contained in `#{ARGV[0]}`..."
 issues = IssueExtractor.new(filename: ARGV[0]).issues
-
-
 reporters = issues.map(&:reporter).uniq
 
 # Columns per author:
@@ -137,13 +136,14 @@ reporter_issue_stats = reporters.map do |reporter|
     reporter, 
     issues_per_reporter.count,
     # resolution_id == 1 => FIXED
-    issues_per_reporter.select { |issue| issue.resolution_id == "1"}.count,
+    issues_per_reporter.select { |issue| issue.resolution_id == "1" }.count,
     # resolution_id == 2 => Won't fix
-    issues_per_reporter.select { |issue| issue.resolution_id == "2"}.count
+    issues_per_reporter.select { |issue| issue.resolution_id == "2" }.count
   ]
 end
 
 timestamp = DateTime.now.strftime("%H%M%S%d%m%Y")
+
 filename = "issues_#{timestamp}.csv"
 filepath = "#{OUTPUT_DIR}#{filename}" 
 CSV.open(filepath, "wb") do |csv|
@@ -152,7 +152,7 @@ CSV.open(filepath, "wb") do |csv|
     csv << issue.csv_line
   end
 end
-puts "Issues Extracted to `#{filepath}`"
+puts " + Extracted issues to `#{filepath}`"
 
 filename = "authors_#{timestamp}.csv"
 filepath = "#{OUTPUT_DIR}#{filename}" 
@@ -162,5 +162,4 @@ CSV.open(filepath, "wb") do |csv|
     csv << stats
   end
 end
-
-puts "Authors Extracted to `#{filepath}`"
+puts " + Extracted authors to `#{filepath}`"
