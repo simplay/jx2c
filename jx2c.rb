@@ -16,10 +16,13 @@ class Issue
     date_resolved
     type
     status
+    resolution_id
     priority
     votes
     assignee
     reporter
+    watches
+    authors
     comment_count
   )
   attr_accessor *ATTRIBUTES
@@ -70,6 +73,7 @@ class IssueExtractor
       type = issue.css("type").text
       status = issue.css("status").text
       priority = issue.css("priority").text
+      resolution_id = issue.css("resolution").attribute("id").value
 
       # vout count
       votes = issue.css("votes").text
@@ -85,6 +89,11 @@ class IssueExtractor
       created = issue.css("created").text
       resolved = issue.css("resolved").text
       comments = issue.css("comments")
+      watches = issue.css("watches").text
+
+      # uniquie comment authors per issue
+      comment_authors = comments.css("comment").map { |t| t.attribute("author").value }
+      comment_author_count = comment_authors.uniq.count
 
       Issue.new(
         id: key,
@@ -96,9 +105,12 @@ class IssueExtractor
         type: type,
         status: status,
         votes: votes,
+        resolution_id: resolution_id,
         priority: priority,
         assignee: assignee,
         reporter: reporter,
+        watches: watches,
+        authors: comment_author_count,
         project_id: project_id,
         project_name: project_name,
         comment_count: comments.css("comment").count
@@ -108,6 +120,28 @@ class IssueExtractor
 end
 
 issues = IssueExtractor.new(filename: ARGV[0]).issues
+
+
+reporters = issues.map(&:reporter).uniq
+
+# Columns per author:
+#   1. reporter name
+#   2. total issues
+#   3. fixed issues
+#   4. won't fix issues
+reporter_issue_stats = reporters.map do |reporter|
+  issues_per_reporter = issues.select do |issue| 
+    issue.reporter == reporter
+  end
+  [
+    reporter, 
+    issues_per_reporter.count,
+    # resolution_id == 1 => FIXED
+    issues_per_reporter.select { |issue| issue.resolution_id == "1"}.count,
+    # resolution_id == 2 => Won't fix
+    issues_per_reporter.select { |issue| issue.resolution_id == "2"}.count
+  ]
+end
 
 timestamp = DateTime.now.strftime("%H%M%S%d%m%Y")
 filename = "issues_#{timestamp}.csv"
@@ -119,3 +153,14 @@ CSV.open(filepath, "wb") do |csv|
   end
 end
 puts "Issues Extracted to `#{filepath}`"
+
+filename = "authors_#{timestamp}.csv"
+filepath = "#{OUTPUT_DIR}#{filename}" 
+CSV.open(filepath, "wb") do |csv|
+  csv << ["Name", "Issues", "Fixed", "Won't Fix"]
+  reporter_issue_stats.each do |stats|
+    csv << stats
+  end
+end
+
+puts "Authors Extracted to `#{filepath}`"
