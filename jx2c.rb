@@ -7,8 +7,8 @@ OUTPUT_DIR = "./output/".freeze
 class Issue
   ATTRIBUTES = %i(
     id
-    title 
-    link 
+    title
+    link
     description_length
     project_id
     project_name
@@ -95,12 +95,15 @@ class IssueExtractor
       comment_authors = comments.css("comment").map { |t| t.attribute("author").value }
       comment_author_count = comment_authors.uniq.count
 
+      date_resolved = ''
+      date_resolved = DateTime.parse(resolved) unless resolved.empty?
+
       Issue.new(
         id: key,
         title: title,
         link: link,
         date_submitted: DateTime.parse(created),
-        date_resolved: DateTime.parse(resolved),
+        date_resolved: date_resolved,
         description_length: description_length,
         type: type,
         status: status,
@@ -129,11 +132,11 @@ reporters = issues.map(&:reporter).uniq
 #   3. fixed issues
 #   4. won't fix issues
 reporter_issue_stats = reporters.map do |reporter|
-  issues_per_reporter = issues.select do |issue| 
+  issues_per_reporter = issues.select do |issue|
     issue.reporter == reporter
   end
   [
-    reporter, 
+    reporter,
     issues_per_reporter.count,
     # resolution_id == 1 => FIXED
     issues_per_reporter.select { |issue| issue.resolution_id == "1" }.count,
@@ -145,7 +148,7 @@ end
 timestamp = DateTime.now.strftime("%H%M%S%d%m%Y")
 
 filename = "issues_#{timestamp}.csv"
-filepath = "#{OUTPUT_DIR}#{filename}" 
+filepath = "#{OUTPUT_DIR}#{filename}"
 CSV.open(filepath, "wb") do |csv|
   csv << Issue.csv_headers
   issues.each do |issue|
@@ -155,7 +158,7 @@ end
 puts " + Extracted issues to `#{filepath}`"
 
 filename = "authors_#{timestamp}.csv"
-filepath = "#{OUTPUT_DIR}#{filename}" 
+filepath = "#{OUTPUT_DIR}#{filename}"
 CSV.open(filepath, "wb") do |csv|
   csv << ["Name", "Issues", "Fixed", "Won't Fix"]
   reporter_issue_stats.each do |stats|
